@@ -1,9 +1,8 @@
 import cv2
 import os
+import math
 import numpy as np
 from matplotlib import pyplot as plt
-from matplotlib.patches import ConnectionPatch
-from skimage.feature import corner_peaks
 output_path = 'outputs/{}'
 
 
@@ -23,14 +22,31 @@ def load_image(image_address):
 
 if __name__ == '__main__':
     logo = load_image("../inputs/logo.png")
-    px, py, c = logo.shape
-    px = px/2
-    py = py/2
-    fx = 500
-    fy = 500
-    d = 25
-    z = 40
     cv2.imshow("logo", logo)
-    cv2.waitKey(0)
-    k = [[fx, 0, px], [0, fy, py], [0, 0, 1]]
-    k2 = [[fx, 0, 10*px], [0, fy, 10*py], [0, 0, 1]]
+    w, h, c = logo.shape
+    px = w/2
+    py = h/2
+    f = 500
+    img_shape = (10*w, 10*h)
+    n = np.array([[0, 0, -1]])
+    C = np.array([[0, -40, 0]]).T
+    theta = math.atan(40/25)
+
+    k = np.array([[f, 0, img_shape[1]/2], [0, f, img_shape[0]/2], [0, 0, 1]])
+    k2 = np.array([[f, 0, py], [0, f, px], [0, 0, 1]])
+    cos = math.cos(theta)
+    sin = math.sin(theta)
+    Ry = np.array([[cos, 0, sin], [0, 1, 0], [-sin, 0, cos]])
+    R = np.array([[1, 0, 0], [0, cos, -sin], [0, sin, cos]])
+    Rz = np.array([[cos, -sin, 0], [sin, cos, 0], [0, 0, 1]])
+    t = -1 * np.matmul(R, C)
+    tn = np.matmul(t, n)/25
+    matrix = R - tn
+    H = np.matmul(k2, matrix)
+    H = np.matmul(H, np.linalg.inv(k))
+    H_inverse = np.linalg.inv(H)
+    result = cv2.warpPerspective(logo, H_inverse, img_shape)
+    cv2.imwrite(output_path.format("res12.jpg"), result)
+
+
+
