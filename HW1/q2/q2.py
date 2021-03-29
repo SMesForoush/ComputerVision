@@ -29,8 +29,8 @@ if __name__ == '__main__':
     f = 500
     img_shape = (10*w, 10*h)
     n = np.array([[0, 0, -1]])
-    C = np.array([[0, -40, 0]]).T
-    theta = math.atan(40/25)
+    C = np.array([[0, 40, 0]]).T
+    theta = -math.atan(40/25)
 
     k = np.array([[f, 0, img_shape[1]/2], [0, f, img_shape[0]/2], [0, 0, 1]])
     k2 = np.array([[f, 0, py], [0, f, px], [0, 0, 1]])
