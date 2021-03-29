@@ -69,30 +69,21 @@ if __name__ == '__main__':
     bf = cv2.BFMatcher(normType=cv2.NORM_L2)
 
     matches = bf.knnMatch(des1, des2, k=2)
-
-    # Need to draw only good matches, so create a mask
-    matchesMask = [[0, 0] for i in range(len(matches))]
     new_matches = []
     for i, (m, n) in enumerate(matches):
         if m.distance < 0.7 * n.distance:
-            matchesMask[i] = [1, 0]
             new_matches.append(m)
-    best_twenty = sorted(new_matches, key=lambda x: x.distance)
-    best_twenty_matches = cv2.drawMatches(img1, kp1, img2, kp2, best_twenty, img2, flags=2, matchColor=(255, 0, 0))
-    cv2.imwrite(output_path.format("res16-1.jpg"), best_twenty_matches)
+    best_twenty_matches = sorted(new_matches, key=lambda x: x.distance)
+    best_twenty_images = cv2.drawMatches(img1, kp1, img2, kp2, best_twenty_matches, img2, flags=2, matchColor=(255, 0, 0))
+    cv2.imwrite(output_path.format("res16-1.jpg"), best_twenty_images)
 
-    draw_params = dict(matchColor=(0, 0, 0),
-                       singlePointColor=(0, 255, 0),
-                       flags=2)
+    # draw_params = dict(matchColor=(0, 0, 0),
+    #                    singlePointColor=(0, 255, 0),
+    #                    flags=2)
     img4, with_line = draw_matches(res, img1.shape, kp1, kp2, new_matches, color=(0, 0, 255))
     cv2.imwrite(output_path.format("res14_correspondences.jpg"), img4)
     cv2.imwrite(output_path.format("res15_match.jpg"), with_line)
-    # fig = plt.figure(figsize=(10, 5))
-    # ax1 = fig.add_subplot(121)
-    # ax1.imshow(img3)
-    # ax2 = fig.add_subplot(122)
-    # ax2.imshow(img4)
-    # # plt.show()
+
     image_1_points = np.zeros((len(new_matches), 1, 2), dtype=np.float32)
     image_2_points = np.zeros((len(new_matches), 1, 2), dtype=np.float32)
 
@@ -102,20 +93,14 @@ if __name__ == '__main__':
 
     homography, mask = cv2.findHomography(image_2_points, image_1_points, cv2.RANSAC,
                                           maxIters=2000)
-    matchesMask = mask.ravel().tolist()
+    inliersMask = mask.ravel().tolist()
 
-    res = draw_inlier_outlier(merge_images(img1, img2), img1.shape, new_matches, matchesMask, kp1, kp2)
-    cv2.imwrite(output_path.format("res17.jpg"), res)
-    # img2 = load_image("../inputs/im04.jpg")
-    # print(homography)
-    # print(img2.dtype)
+    inlier_outlier_images = draw_inlier_outlier(merge_images(img1, img2), img1.shape, new_matches, inliersMask, kp1, kp2)
+    cv2.imwrite(output_path.format("res17.jpg"), inlier_outlier_images)
     print(homography)
-    dst = cv2.warpPerspective(transforming_img, homography, (10000, 10000))
-    cv2.imwrite(output_path.format("res19.jpg"), dst)
-    # plt.imshow(dst)
-    # plt.show()
+    projected_img = cv2.warpPerspective(transforming_img, homography, (10000, 10000))
+    cv2.imwrite(output_path.format("res19.jpg"), projected_img)
 
-    # print(kp2)
 """
 [[ 3.59177280e+00  3.07034125e-01 -2.35543670e+03]
  [ 6.05885788e-02  2.16232917e+00 -1.05591478e+03]
