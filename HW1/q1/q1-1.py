@@ -4,7 +4,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 from matplotlib.patches import ConnectionPatch
 from skimage.feature import corner_peaks
-output_path = '../outputs/2-{}'
+output_path = '{}'
 
 
 def img_resize(img, percent):
@@ -17,19 +17,14 @@ def img_resize(img, percent):
 
 def load_image(image_address):
     img = cv2.imread(image_address)
-    # img = img_resize(img, 50)
     return img
 
 
 def show_image(image, name):
-    # convert = cv2.convertScaleAbs(image)
-    # plt.imshow(convert)
-    # plt.show()
-    # cv2.imshow(f"{name}-converted", convert)
-    # cv2.waitKey(0)
+    convert = cv2.convertScaleAbs(image)
+    cv2.imshow(f"{name}-converted", convert)
     cv2.imshow(f"{name}-not converted", image)
     cv2.waitKey(0)
-    # cv2.imwrite(f"{name}-converted.jpg", convert)
 
 
 def write_image(img, name):
@@ -37,54 +32,22 @@ def write_image(img, name):
     cv2.imwrite(output_path.format(name), abs_grad)
 
 
-def imshow_components(labels):
-    # Map component labels to hue val
-    label_hue = np.uint8(179*labels/np.max(labels))
-    blank_ch = 255*np.ones_like(label_hue)
-    labeled_img = cv2.merge([label_hue, blank_ch, blank_ch])
-
-    # cvt to BGR for display
-    labeled_img = cv2.cvtColor(labeled_img, cv2.COLOR_HSV2BGR)
-
-    # set bg label to black
-    labeled_img[label_hue == 0] = 0
-    resized = img_resize(labeled_img, 50)
-
-    cv2.imshow('labeled.png', resized)
-    cv2.waitKey()
-
-
 def compute_max_corner(image):
-    array_np = []
     peak_points = []
     binary_image = np.zeros(image.shape, dtype=np.uint8)
     binary_image[image > 0] = 255
-    # plt.imshow(binary_image)
     n_labels, labels_im = cv2.connectedComponents(binary_image, connectivity=8)
-    print("connected componnents : ", n_labels)
     for label in range(n_labels):
         condition = labels_im == label
         max_label = np.max(image[condition])
         condition = np.logical_and(condition, image == max_label)
         position = np.argwhere(condition)
-        sample = min(position.shape[0], 4)
+        # sample = min(position.shape[0], 2)
         # index = np.random.choice(position.shape[0], sample, replace=False)
         index = [0]
-        # import pdb
-        # pdb.set_trace()
         position_list = position[index].tolist()
-        # array_np.append(position[index])
         peak_points.extend(position_list)
-    print(labels_im.shape)
-    plt.imshow(labels_im*100)
-    # plt.show()
-    print(labels_im)
-    print("peak points : ", peak_points)
-    # print("array points : ", array_np)
-    # print(len(peak_points))
     return np.array(peak_points, dtype=np.int)
-
-    # imshow_components(labels_im)
 
 
 def compute_image_gradients(img, i):
@@ -96,8 +59,6 @@ def compute_image_gradients(img, i):
     img_ix2 = img_ix ** 2
     img_iy2 = img_iy ** 2
     grad = np.power(img_iy2+img_ix2, 0.5)
-    # abs_grad = cv2.convertScaleAbs(grad)
-    # cv2.imwrite(output_path.format(f"res0{i}_grad.jpg"), abs_grad)
     write_image(grad, f"res0{i}_grad.jpg")
     i += 2
     sx2 = cv2.GaussianBlur(img_ix2, (k_size, k_size), sigmaX=s_d)
@@ -109,16 +70,10 @@ def compute_image_gradients(img, i):
     trace_2 = np.power(trace, 2)
     k = 0.02
     # k = np.max(det) / np.max(trace_2)
-    print("det -> max : ", np.max(det), " min : ", np.min(det))
-    print("trace -> max : ", np.max(trace_2), " min : ", np.min(trace_2))
-    print("k : ", k)
     R = det - k * trace_2
     write_image(R, f"res0{i}_score.jpg")
     i += 2
-    print("R -> max : ", np.max(R), " min : ", np.min(R))
-    # threshold = np.max(R)/300000
     threshold = 40000
-    print(threshold)
     R[R < threshold] = 0
     write_image(R, f"res0{i}_thresh.jpg")
     i += 2
@@ -157,7 +112,6 @@ def compute_cores(features1, cores1, features2):
         diff = d2/d1
         # print(diff)
         if diff >= 1.7:
-            print("in if")
             cores1[q] = np.argwhere(distances == d1)
         else:
             cores1[q] = -1
@@ -166,7 +120,6 @@ def compute_cores(features1, cores1, features2):
 
 if __name__ == '__main__':
     img1 = load_image("../inputs/im01.jpg")
-    print(img1.shape)
     img2 = load_image("../inputs/im02.jpg")
     features_1, cords_1 = compute_image_gradients(img1, 1)
     features_2, cords_2 = compute_image_gradients(img2, 2)
@@ -179,12 +132,10 @@ if __name__ == '__main__':
     sorted_cros = np.sort(cores_1)
     for q in range(sorted_cros.shape[0]-1):
         if sorted_cros[q] == sorted_cros[q+1]:
-            print("cores duplicate")
             cores_1[cores_1 == sorted_cros[q]] = -1
     sorted_cros = np.sort(cores_2)
     for q in range(sorted_cros.shape[0]-1):
         if sorted_cros[q] == sorted_cros[q+1]:
-            print("cores duplicate")
             cores_2[cores_2 == sorted_cros[q]] = -1
     final = []
 
@@ -204,7 +155,6 @@ if __name__ == '__main__':
         x = cords_1[p1, 1]
         y = cords_1[p1, 0]
         rgb = np.random.rand(3, )
-        print(rgb)
         ax1.plot(x, y, 'x', c=rgb, markersize=5)
         y2, x2 = cords_2[q1]
         ax2.plot(x2, y2, 'x', c=rgb, markersize=5)

@@ -106,7 +106,7 @@ def ransac(points1, points2, N):
     sample_num = 4
     best_result = None
     best_inlier_num = -1
-    threshold = 100
+    threshold = 25
     final_mask = None
     best_h = None
     for i in range(N):
@@ -143,7 +143,11 @@ if __name__ == "__main__":
     # h_matrix = np.array([[1.7798548e+00, 6.6127861e-01, 1.8474008e+02],
     #                      [1.1618153e+00, 1.9653734e+00, -2.3575032e+02],
     #                      [1.1933770e-03, 9.3739229e-04, 1.0000000e+00]], dtype=np.float32)
-    projected_im = cv2.warpPerspective(transforming_img, h_matrix, (1000, 1000))
+    projected_im = cv2.warpPerspective(transforming_img, h_matrix, (10000, 10000))
+    M = np.float32([[1, 0, 1000], [0, 1, 1000], [0, 0, 1]])
+    h_matrix = np.matmul(h_matrix, M)
+    dst = cv2.warpPerspective(transforming_img, h_matrix, (10000, 10000))
+    cv2.imwrite("transposed.jpg", dst)
     cv2.imwrite("res20.jpg", projected_im)
 
 """
