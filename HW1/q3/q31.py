@@ -27,7 +27,7 @@ def draw_match(base_image, position1, position2, color, r=5, thickness=5):
 
 
 def draw_inlier_outlier(draw_img, based_shape, matches, masks, img1_points, img2_points,
-                        inlier_color=(255, 0, 0), outlier_color=(0, 255, 255)):
+                        inlier_color=(0, 0, 255), outlier_color=(255, 0, 0)):
     for i, m in enumerate(matches):
         end1 = (round(img1_points[i][0, 0]), round(img1_points[i][0, 1]))
         end2 = (round(img2_points[i][0, 0] + based_shape[1]), round(img2_points[i][0, 1]))
@@ -112,7 +112,9 @@ if __name__ == '__main__':
     cv2.imwrite(output_path.format("res17.jpg"), inlier_outlier_images)
     print(homography)
     transforming_img = img2.copy()
-    projected_img = cv2.warpPerspective(transforming_img, homography, (10000, 10000))
+    t = np.array([[1, 0, 3000], [0, 1, 1500], [0, 0, 1]])
+    h_m = np.matmul(t, homography)
+    projected_img = cv2.warpPerspective(transforming_img, h_m, (10000, 5000))
     cv2.imwrite(output_path.format("res19.jpg"), projected_img)
 
 """
@@ -122,9 +124,9 @@ if __name__ == '__main__':
 """
 
 """
-[[-2.91114311e-01 -3.68257580e-01  6.33738408e+02]
- [-2.62725323e-01 -2.76262136e-02  2.76773936e+02]
- [-5.87985555e-04 -4.85457303e-04  1.00000000e+00]]
+[[ 3.78553417e+00  3.01721213e-01 -2.46104103e+03]
+ [ 7.84130384e-02  2.32216099e+00 -1.16596106e+03]
+ [ 1.42729927e-04 -1.77465977e-04  1.00000000e+00]]
 """
 
 """

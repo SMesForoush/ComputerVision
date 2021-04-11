@@ -78,24 +78,6 @@ def compute_lstsqr_homography(inliers):
     points1, points2 = inliers
     points1 = np.array(points1, dtype=np.float32)
     points2 = np.array(points2, dtype=np.float32)
-
-    # h, m = cv2.findHomography(srcPoints=np.array(points2), dstPoints=np.array(points1))
-    matrix = [[0, 0, 0, 0, 0, 0, 0, 0, 1]]
-    # matrix = []
-    result = [1]
-    for j in range(len(points1)):
-        p1 = points1[j]
-        p2 = points2[j]
-        arr1, arr2 = compute_points_array(p1, p2)
-        matrix.append(arr1)
-        matrix.append(arr2)
-        result.append(0)
-        result.append(0)
-    result = np.array(result, dtype=np.float32)
-    matrix = np.array(matrix, dtype=np.float32)
-    lst_h, res, rnk, s = lstsq(matrix, result)
-    lst_h = lst_h.reshape((3, 3))
-    lst_h = lst_h / lst_h[2, 2]
     svd_h = compute_homography(points1, points2)
     svd_h = svd_h/svd_h[2, 2]
     return svd_h
@@ -122,9 +104,14 @@ def ransac(points1, points2, N):
             best_result = (inliers1, inliers2)
             final_mask = mask
             best_h = h
-    final_homography = compute_lstsqr_homography(best_result)
-    final_homography = final_homography / final_homography[2, 2]
-    return best_h, final_mask
+    final_homography = best_h
+    for i in range(10):
+        homography = compute_lstsqr_homography(best_result)
+        homography = homography / homography[2, 2]
+        inliers1, inliers2, mask = compute_inliers(homography, points2, points1, threshold)
+        if len(inliers1) > best_inlier_num:
+            final_homography = homography
+    return final_homography, final_mask
 
 
 if __name__ == "__main__":
@@ -133,22 +120,22 @@ if __name__ == "__main__":
     new_matches, match_points, key_points = q31.compute_matching_points(img1, img2)
     image_1_points = match_points[0]
     image_2_points = match_points[1]
-    homography, mask = ransac(image_1_points, image_2_points, 7000)
-    # finlier_outlier_images = q31.draw_inlier_outlier(q31.merge_images(img1, img2), img1.shape, new_matches, mask,
-    #                                                  image_1_points, image_2_points)
-    # plt.imshow(finlier_outlier_images)
-    # plt.show()
+    homography, mask = ransac(image_1_points, image_2_points, 2000)
+    finlier_outlier_images = q31.draw_inlier_outlier(q31.merge_images(img1, img2), img1.shape, new_matches, mask,
+                                                     image_1_points, image_2_points)
+    cv2.imwrite("inl.jpg", finlier_outlier_images)
     h_matrix = homography
     transforming_img = img2.copy()
     # h_matrix = np.array([[1.7798548e+00, 6.6127861e-01, 1.8474008e+02],
     #                      [1.1618153e+00, 1.9653734e+00, -2.3575032e+02],
     #                      [1.1933770e-03, 9.3739229e-04, 1.0000000e+00]], dtype=np.float32)
-    projected_im = cv2.warpPerspective(transforming_img, h_matrix, (10000, 10000))
-    M = np.float32([[1, 0, 1000], [0, 1, 1000], [0, 0, 1]])
-    h_matrix = np.matmul(h_matrix, M)
-    dst = cv2.warpPerspective(transforming_img, h_matrix, (10000, 10000))
-    cv2.imwrite("transposed.jpg", dst)
-    cv2.imwrite("res20.jpg", projected_im)
+    projected_im = cv2.warpPerspective(transforming_img, h_matrix, (img1.shape[1], img1.shape[0]))
+    print(h_matrix)
+    M = np.float32([[1, 0, 3000], [0, 1, 1500], [0, 0, 1]])
+    h_matrix = np.matmul(M, h_matrix)
+    dst = cv2.warpPerspective(transforming_img, h_matrix, (10000, 5000))
+    cv2.imwrite("transposed.jpg", img_resize(dst, 50))
+    cv2.imwrite("res20.jpg", img_resize(projected_im, 50))
 
 """
 ic| best_h: array([[ 3.52557214e+00,  2.80726590e-01, -2.26172914e+03],
