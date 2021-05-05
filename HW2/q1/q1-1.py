@@ -3,6 +3,7 @@ import random
 
 import cv2
 import numpy as np
+import pandas
 from matplotlib import pyplot as plt
 from icecream import ic
 
@@ -70,7 +71,7 @@ def compute_matching_points(img1, img2):
     matches = bf.knnMatch(des1, des2, k=2)
     new_matches = []
     for (m, n) in matches:
-        if m.distance < 0.8 * n.distance:
+        if m.distance < 0.5 * n.distance:
             new_matches.append(m)
 
     image_1_points = np.zeros((len(new_matches), 1, 2), dtype=np.float32)
@@ -79,7 +80,7 @@ def compute_matching_points(img1, img2):
     for i in range(len(new_matches)):
         image_1_points[i] = kp1[new_matches[i].queryIdx].pt
         image_2_points[i] = kp2[new_matches[i].trainIdx].pt
-
+    print("matching points len : ", len(image_1_points))
     return image_1_points, image_2_points
 
 
@@ -130,6 +131,8 @@ def continual_homography_lower(start_index, dst_index):
 
 
 def convert_image(dest_index, start_index):
+    if start_index == dest_index:
+        return np.eye(3, 3)
     if abs(start_index - dest_index) <= 180:
         h = transpose_image(dest_index, start_index)
     else:
@@ -148,7 +151,7 @@ def draw_pts_with_img(img, points, filename):
     plt.clf()
 
 
-if __name__ == '__main__':
+def q11():
     dst_frame = 450
     src_frame = 270
     frame_path = "../inputs/frame-{}.jpg"
@@ -174,11 +177,6 @@ if __name__ == '__main__':
                           5)
     cv2.imwrite(f"result-rect-{src_frame}.jpg", image)
 
-    # cv2.circle(img1, start_point, 5, (255, 0, 0), 5)
-    # cv2.imwrite("circle-p.jpg", img1)
-    # cv2.circle(img2, (int(result_array[0, 0]), int(result_array[0, 1])), 5, (255, 0, 0), 5)
-    # cv2.imwrite("circle2-p.jpg", img2)
-
     transforming_img = img2.copy()
     t = np.array(
         [[1, 0, result_size[0] / 2 - img1.shape[1] / 2], [0, 1, result_size[1] / 2 - img1.shape[0] / 2], [0, 0, 1]],
@@ -189,3 +187,110 @@ if __name__ == '__main__':
     condition = transformed_img > 0
     projected_img[condition] = transformed_img[condition]
     cv2.imwrite(f"{src_frame}-{dst_frame}-panorama-resized.jpg", projected_img)
+
+
+def q12():
+    img_shape = (1080*3, 1920*3, 3)
+    # result_size = (img_shape[1] * 3, img_shape[0] * 3)
+    # result_image = np.zeros(img_shape, dtype=np.float)
+    # t = np.array(
+    #     [[1, 0, result_size[0] / 2 - img_shape[1] / 2], [0, 1, result_size[1] / 2 - img_shape[0] / 2], [0, 0, 1]],
+    #     dtype=np.float32)
+    # mask = np.zeros(result_size, dtype=np.float)
+    # for frame in main_indexes:
+    #     src_img = load_image(frame_path.format(frame))
+    #     homography = convert_image(450, frame)
+    #     h_m = np.matmul(t, homography)
+    #     projected_img = cv2.warpPerspective(src_img, h_m, result_size)
+    #     condition = result_image[:, :, 0] > 0
+    #     mask[:, :, :] = 0
+    #     mask[condition] = 1
+    #     projected_img[condition] = transformed_img[condition]
+
+
+def compute_key_frames():
+    main_keys_dict = {}
+    dst_frame = 450
+    for src_frame in main_indexes:
+        homography = convert_image(dst_frame, src_frame)
+        homography = homography.astype(np.float64)
+        main_keys_dict[f"{src_frame}-{dst_frame}"] = homography
+    return main_keys_dict
+
+
+def find_homography_with_image(dst_image, start_image):
+    match_points = compute_matching_points(dst_image, start_image)
+    image_1_points = match_points[0]
+    image_2_points = match_points[1]
+    homography, mask = cv2.findHomography(image_2_points, image_1_points, cv2.RANSAC, maxIters=1000)
+    return homography
+
+
+def find_frame_homography(start_index, start_image, dst_image, key_frame_h):
+    dest_index = 450
+    if abs(start_index - dest_index) <= 180:
+        h = find_homography_with_image(dst_image, start_image)
+    else:
+        if dest_index > start_index:
+            index = 0
+            while main_indexes[index] <= start_index:
+                index += 1
+        else:
+            index = len(main_indexes) - 1
+            while main_indexes[index] >= start_index:
+                index -= 1
+        # print(index, main_indexes[index])
+        h1 = find_homography_with_image(cv2.imread(frame_path.format(main_indexes[index])), start_image)
+        h = np.matmul(h1, key_frame_h.get(f"{main_indexes[index]}-450"))
+    return h
+
+
+def q13():
+    key_frames = compute_key_frames()
+    dst_image = cv2.imread(frame_path.format(450))
+    result_size = (dst_image.shape[1] * 3, dst_image.shape[0] * 3)
+    t = np.array(
+        [[1, 0, result_size[0] / 2 - dst_image.shape[1] / 2],
+         [0, 1, result_size[1] / 2 - dst_image.shape[0] / 2], [0, 0, 1]],
+        dtype=np.float32)
+    homographies = []
+    corner_values = []
+    columns = ["h11", "h12", "h13", "h21", "h22", "h23", "h31", "h32", "h33"]
+    corner_columns = ["left x", "left y", "right x", "right y"]
+    for i in range(1, 901):
+        print("current frame transforming : ", i)
+        start_image = cv2.imread(frame_path.format(i))
+        h = find_frame_homography(i, start_image, dst_image, key_frames)
+        h_m = np.matmul(t, h)
+        homographies.append(h_m.reshape((-1)).tolist())
+        projected_img = cv2.warpPerspective(start_image, h_m, result_size)
+        b, g, r = cv2.split(projected_img)
+        y, x = np.where((b > 0) | (g > 0) | (r > 0))
+        min_loc = x == x.min()
+        max_loc = x == x.max()
+        minimum_x = x[min_loc][0]
+        minimum_y = y[min_loc][0]
+        maximum_x = x[max_loc][0]
+        maximum_y = y[max_loc][0]
+        corner_values.append([minimum_x, minimum_y, maximum_x, maximum_y])
+        cv2.imwrite(f"outputs/frame-{i}.jpg", projected_img)
+    df = pandas.DataFrame(homographies, columns=columns)
+    df.to_csv("outputs/frames_h.csv", index=True)
+    df = pandas.DataFrame(corner_values, columns=corner_columns)
+    df.to_csv("outputs/frames_corners.csv", index=True)
+    """
+    ffmpeg -f image2 -i frame-%d.jpg result.mp4
+    rm frame-*
+    """
+
+
+if __name__ == '__main__':
+    frame_path = "../inputs/frame-{}.jpg"
+    # q11()
+    # q12()
+
+    q13()
+    # img1 = load_image(frame_path.format(450))
+    # print(img1.shape)
+
+
