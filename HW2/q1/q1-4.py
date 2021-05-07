@@ -11,13 +11,26 @@ def read_patch(start_x, end_x):
     # first image is the one with smallest left x value
     # last image is the one with largest right value
     frame_mask = (frame_corners['left x'] < end_x) & (frame_corners['right x'] > start_x)
+
     pixels = {}
     current_frames = frame_corners[frame_mask]
-    for index, row in current_frames.iterrows():
+    current_indexes = frame_indexes[frame_mask]
+    start_index = current_indexes[0]
+    last_index = current_indexes[-1]
+    index = start_index
+    loop_num = 0
+    while index <= last_index:
         frame_x = cv2.imread(frame_path.format(index+1))
         frame_cropped = frame_x[:, start_x:end_x]
         b, g, r = cv2.split(frame_cropped)
-        ys, xs = np.where((b > 0) & (g > 0) & (r > 0))
+        ys, xs = np.where((b > 3) & (g > 3) & (r > 3))
+        if len(xs) == 0:
+            if loop_num >= 30:
+                print("break loop")
+                break
+        else:
+            loop_num += 1
+
         for i in range(len(xs)):
             x = xs[i]
             y = ys[i]
@@ -29,6 +42,24 @@ def read_patch(start_x, end_x):
                 current = [frame_cropped[y, x, :].tolist()]
 
             pixels[f"{x}-{y}"] = current
+        index += 1
+
+    # for index, row in current_frames.iterrows():
+    #     frame_x = cv2.imread(frame_path.format(index+1))
+    #     frame_cropped = frame_x[:, start_x:end_x]
+    #     b, g, r = cv2.split(frame_cropped)
+    #     ys, xs = np.where((b > 0) & (g > 0) & (r > 0))
+    #     for i in range(len(xs)):
+    #         x = xs[i]
+    #         y = ys[i]
+    #         current = pixels.get(f"{x}-{y}")
+    #         if current:
+    #             frame_arr = (frame_cropped[y, x, :]).tolist()
+    #             current.append(frame_arr)
+    #         else:
+    #             current = [frame_cropped[y, x, :].tolist()]
+    #
+    #         pixels[f"{x}-{y}"] = current
     for key, value in pixels.items():
         x, y = key.split("-")
         maximum_color = np.median(np.array(value), axis=0)
@@ -40,9 +71,10 @@ if __name__ == "__main__":
     w, h, c = image1.shape
     result = np.zeros(image1.shape, dtype=np.uint8)
     print(w, h)
-    frame_corners = pd.read_csv("outputs/frames_corners.csv")
+    frame_corners = pd.read_csv("outputs/frames_corners-new.csv")
+    frame_indexes = frame_corners.index
     patch_size = 100
-    left = patch_size+100
+    left = patch_size+3200
     i = 0
     while left < h:
         current_time = time.time()
@@ -52,4 +84,4 @@ if __name__ == "__main__":
         end_time = time.time()
         diff = (end_time-current_time)/60
         print(f"round i : {i} with diff : {diff}")
-    cv2.imwrite("background_subtracted.jpg", result)
+    cv2.imwrite("background_subtracted-half.jpg", result)
