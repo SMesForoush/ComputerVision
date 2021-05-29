@@ -21,7 +21,7 @@ def load_image(image_address):
 
 
 if __name__ == '__main__':
-    logo = load_image("../inputs/logo.png")
+    logo = load_image("inputs/logo.png")
     cv2.imshow("logo", logo)
 
     """parameters"""
@@ -52,6 +52,5 @@ if __name__ == '__main__':
     """warp result"""
     result = cv2.warpPerspective(logo, H_inverse, img_shape)
     cv2.imwrite(output_path.format("res12.jpg"), result)
-
 
 

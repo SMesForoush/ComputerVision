@@ -4,7 +4,7 @@ import os
 
 # Read the video from specified path
 cam = cv2.VideoCapture("../inputs/video.mp4")
-output_path = "../inputs/frame-{}.jpg"
+output_path = "inputs/frame-{}.jpg"
 
 currentframe = 1
 status = True

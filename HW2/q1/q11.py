@@ -4,9 +4,12 @@ import random
 import cv2
 import numpy as np
 import pandas
+from matplotlib import pyplot as plt
+from icecream import ic
 from q1 import *
 
 output_path = '../outputs/{}'
+frame_path = "inputs/frame-{}.jpg"
 main_indexes = [90, 180, 270, 450, 630, 810]
 
 
@@ -23,6 +26,46 @@ def load_image(image_address):
     return img
 
 
+def draw_match(base_image, position1, position2, color, r=5, thickness=5):
+    cv2.circle(base_image, position1, r, color, thickness)
+    cv2.circle(base_image, position2, r, color, thickness)
+    cv2.line(base_image, position1, position2, color, thickness)
+
+
+def draw_inlier_outlier(draw_img, based_shape, matches, masks, img1_points, img2_points,
+                        inlier_color=(0, 0, 255), outlier_color=(255, 0, 0)):
+    for i, m in enumerate(matches):
+        end1 = (round(img1_points[i][0, 0]), round(img1_points[i][0, 1]))
+        end2 = (round(img2_points[i][0, 0] + based_shape[1]), round(img2_points[i][0, 1]))
+        if masks[i]:
+            draw_match(base_image=draw_img, position1=end1, position2=end2, color=inlier_color)
+        else:
+            draw_match(base_image=draw_img, position1=end1, position2=end2, color=outlier_color)
+    return draw_img
+
+
+def draw_correspondents(new_img, based_shape, img1_points, img2_points, matches, color=None):
+    r = 5
+    thickness = 5
+    img_with_line = new_img.copy()
+    for i, m in enumerate(matches):
+        end1 = (round(img1_points[i][0, 0]), round(img1_points[i][0, 1]))
+        end2 = (round(img2_points[i][0, 0] + based_shape[1]), round(img2_points[i][0, 1]))
+        cv2.circle(new_img, end1, r, color, thickness)
+        cv2.circle(new_img, end2, r, color, thickness)
+        if i % 200 == 0:
+            draw_match(img_with_line, end1, end2, color)
+    return new_img, img_with_line
+
+
+def merge_images(img1, img2):
+    new_shape = (max(img1.shape[0], img2.shape[0]), img1.shape[1] + img2.shape[1], img1.shape[2])
+    new_img = np.zeros(new_shape, dtype=img1.dtype)
+    new_img[:img1.shape[0], :img1.shape[1]] = img1
+    new_img[:img2.shape[0], img1.shape[1]:img1.shape[1] + img2.shape[1]] = img2
+    return new_img
+
+
 def compute_matching_points(img1, img2):
     sift = cv2.SIFT_create()
     kp1, des1 = sift.detectAndCompute(img1, None)
@@ -31,7 +74,7 @@ def compute_matching_points(img1, img2):
     matches = bf.knnMatch(des1, des2, k=2)
     new_matches = []
     for (m, n) in matches:
-        if m.distance < 0.6 * n.distance:
+        if m.distance < 0.8 * n.distance:
             new_matches.append(m)
 
     image_1_points = np.zeros((len(new_matches), 1, 2), dtype=np.float32)
@@ -40,6 +83,13 @@ def compute_matching_points(img1, img2):
     for i in range(len(new_matches)):
         image_1_points[i] = kp1[new_matches[i].queryIdx].pt
         image_2_points[i] = kp2[new_matches[i].trainIdx].pt
+    res, res_with_line = draw_correspondents(merge_images(img1, img2), img1.shape, image_1_points, image_2_points, new_matches)
+    # plt.subplot(2, 1, 1)
+    # plt.imshow(res)
+    # plt.subplot(2, 1, 2)
+    # plt.imshow(res_with_line)
+    # plt.show()
+    print("matching points len : ", len(image_1_points))
     return image_1_points, image_2_points
 
 
@@ -101,6 +151,14 @@ def convert_image(dest_index, start_index):
     return h
 
 
+def draw_pts_with_img(img, points, filename):
+    plt.imshow(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+    points = np.vstack((points, points[0, :]))
+    plt.plot(points[:, 0], points[:, 1])
+    plt.savefig(filename)
+    plt.clf()
+
+
 def q11():
     dst_frame = 450
     src_frame = 270
@@ -115,7 +173,7 @@ def q11():
               (860, 1000),
               (350, 1000)
               ]
-    print(points)
+    ic(points)
     start_array = np.array(points, dtype=np.float).reshape((-1, 1, 2))
     result_array = cv2.perspectiveTransform(src=start_array, m=np.linalg.inv(homography))
     image = cv2.polylines(img1.copy(), [start_array.astype(np.int32)],
@@ -136,8 +194,9 @@ def q11():
     transformed_img = cv2.warpPerspective(img1, t, result_size)
     condition = transformed_img > 0
     projected_img[condition] = transformed_img[condition]
-    cv2.imwrite(f"{src_frame}-{dst_frame}-panorama-resized.jpg", projected_img)
-
+    # cv2.imwrite(f"{src_frame}-{dst_frame}-panorama-resized.jpg", projected_img)
+    plt.imshow(projected_img)
+    plt.show()
 
 def q12():
     img_shape = (1080*3, 1920*3, 3)
@@ -219,7 +278,7 @@ def q13():
         start_image = cv2.imread(frame_path.format(i))
         h = find_frame_homography(i, start_image, dst_image, key_frames)
         h_m = np.matmul(t, h)
-        homographies.append(h.reshape((-1)).tolist())
+        homographies.append(h_m.reshape((-1)).tolist())
         projected_img = cv2.warpPerspective(start_image, h_m, result_size)
         b, g, r = cv2.split(projected_img)
         y, x = np.where((b > 0) | (g > 0) | (r > 0))
@@ -230,11 +289,11 @@ def q13():
         maximum_x = x[max_loc][0]
         maximum_y = y[max_loc][0]
         corner_values.append([minimum_x, minimum_y, maximum_x, maximum_y])
-        # cv2.imwrite(f"outputs/frame-{i}.jpg", projected_img)
+        cv2.imwrite(f"outputs/frame-{i}.jpg", projected_img)
     df = pandas.DataFrame(homographies, columns=columns)
-    df.to_csv("homographies_without_trans.csv", index=True)
-    # df = pandas.DataFrame(corner_values, columns=corner_columns)
-    # df.to_csv(FRAME_CORNER, index=True)
+    df.to_csv(FRAME_HOMOGRAPHY, index=True)
+    df = pandas.DataFrame(corner_values, columns=corner_columns)
+    df.to_csv(FRAME_CORNER, index=True)
     """
     ffmpeg -f image2 -i frame-%d.jpg result.mp4
     rm frame-*
@@ -242,13 +301,12 @@ def q13():
 
 
 if __name__ == '__main__':
-    frame_path = "inputs/frame-{}.jpg"
-    # q11()
+    q11()
     # q12()
 
-    q13()
-    # compute_key_frames()
-    # img1 = load_image(frame_path.format(450))
-    # print(img1.shape)
+    # q13()
+    compute_key_frames()
+    img1 = load_image(frame_path.format(450))
+    print(img1.shape)
 
 

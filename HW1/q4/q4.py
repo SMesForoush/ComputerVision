@@ -162,3 +162,73 @@ lstsqrs : [[ 1.7798548e+00,  6.6127861e-01,  1.8474008e+02],
                              [ 1.1933770e-03,  9.3739229e-04,  1.0000000e+00]]
 
 """
+
+
+"""
+vert_condition = ms == 100
+x_cond = np.logical_not(vert_condition) & (ms > 0)
+y_cond = np.logical_not(vert_condition) & np.logical_not(x_cond)
+vert_edges = (loc[vert_condition], dir[vert_condition], stren[vert_condition])
+rectification.vis_edgelets(img, vert_edges)
+
+"""
+
+"""
+vert_condition = ms == 100
+import numpy as np
+
+y_cond
+array([False, False, False, ..., False, False,  True])
+dir(y_cond)
+Traceback (most recent call last):
+  File "<input>", line 1, in <module>
+TypeError: 'numpy.ndarray' object is not callable
+dir[y_cond]
+array([[ 0.9906635 , -0.13632984],
+       [ 1.        ,  0.        ],
+       [ 1.        ,  0.        ],
+       ...,
+       [ 0.4472136 , -0.89442719],
+       [ 1.        ,  0.        ],
+       [-1.        ,  0.        ]])
+vert_edges = (loc[vert_condition], dir[vert_condition], stren[vert_condition])
+rectification.vis_edgelets(img, vert_edges)
+x_edges = (loc[x_cond], dir[x_cond], stren[x_cond])
+rectification.vis_edgelets(img, x_edges)
+x_cond = (ms > 0) & (ms < 20)
+x_edges = (loc[x_cond], dir[x_cond], stren[x_cond])
+rectification.vis_edgelets(img, x_edges)
+vp1 = rectification.ransac_vanishing_point(x_edges, num_ransac_iter=2000,
+                                 threshold_inlier=5)
+/home/sahel/PycharmProjects/ComputerVision/HW3/q1/rectification.py:125: RuntimeWarning: invalid value encountered in arccos
+  theta = np.arccos(np.abs(cosine_theta))
+vp1 = rectification.reestimate_model(vp1, edgelets, threshold_reestimate=5)
+/home/sahel/PycharmProjects/ComputerVision/HW3/q1/rectification.py:125: RuntimeWarning: invalid value encountered in arccos
+  theta = np.arccos(np.abs(cosine_theta))
+/home/sahel/PycharmProjects/ComputerVision/HW3/q1/rectification.py:301: FutureWarning: `rcond` parameter will change to the default of machine precision times ``max(M, N)`` where M and N are the input matrix dimensions.
+To use the future default and silence this warning we advise to pass `rcond=None`, to keep using the old, explicitly pass `rcond=-1`.
+  est_model = np.linalg.lstsq(a, b)[0]
+rectification.vis_model(img, vp1)
+vp1 = rectification.ransac_vanishing_point(x_edges, num_ransac_iter=2000,
+                                 threshold_inlier=5)
+/home/sahel/PycharmProjects/ComputerVision/HW3/q1/rectification.py:125: RuntimeWarning: invalid value encountered in arccos
+  theta = np.arccos(np.abs(cosine_theta))
+vp1 = rectification.reestimate_model(vp1, x_edges, threshold_reestimate=5)
+/home/sahel/PycharmProjects/ComputerVision/HW3/q1/rectification.py:301: FutureWarning: `rcond` parameter will change to the default of machine precision times ``max(M, N)`` where M and N are the input matrix dimensions.
+To use the future default and silence this warning we advise to pass `rcond=None`, to keep using the old, explicitly pass `rcond=-1`.
+  est_model = np.linalg.lstsq(a, b)[0]
+rectification.vis_model(img, vp1)
+x_cond = (ms > 0) & (ms < 10)
+x_edges = (loc[x_cond], dir[x_cond], stren[x_cond])
+vp1 = rectification.ransac_vanishing_point(x_edges, num_ransac_iter=2000,
+                                 threshold_inlier=5)
+/home/sahel/PycharmProjects/ComputerVision/HW3/q1/rectification.py:125: RuntimeWarning: invalid value encountered in arccos
+  theta = np.arccos(np.abs(cosine_theta))
+vp1 = rectification.reestimate_model(vp1, x_edges, threshold_reestimate=5)
+/home/sahel/PycharmProjects/ComputerVision/HW3/q1/rectification.py:125: RuntimeWarning: invalid value encountered in arccos
+  theta = np.arccos(np.abs(cosine_theta))
+/home/sahel/PycharmProjects/ComputerVision/HW3/q1/rectification.py:301: FutureWarning: `rcond` parameter will change to the default of machine precision times ``max(M, N)`` where M and N are the input matrix dimensions.
+To use the future default and silence this warning we advise to pass `rcond=None`, to keep using the old, explicitly pass `rcond=-1`.
+  est_model = np.linalg.lstsq(a, b)[0]
+rectification.vis_model(img, vp1)
+"""
